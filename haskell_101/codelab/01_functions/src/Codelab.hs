@@ -28,22 +28,22 @@ import Prelude hiding (gcd)
 -- we have for now is numbers.
 
 add :: Int -> Int -> Int
-add x y = codelab
+add x y = x + y
 
 subtract :: Int -> Int -> Int
-subtract x y = codelab
+subtract x y = x - y
 
 double :: Int -> Int
-double x = codelab
+double x = x * 2
 
 multiply :: Int -> Int -> Int
-multiply x y = codelab
+multiply x y = x * y
 
 -- Note that Haskell is strict about types even for basic integral types.
 -- Int is never automatically converted to Double.  But you can use
 -- fromIntegral to convert from any integral type to any number type.
 divide :: Int -> Int -> Double
-divide x y = codelab
+divide x y = fromIntegral x / fromIntegral y
 
 -- Remember that you can use if/then/else:
 --
@@ -56,10 +56,28 @@ divide x y = codelab
 -- Remember that function application binds tighter than operators!
 -- E.g.: `3 * f 4` is the same as `3 * (f 4)`, not `(3 * f) 4`.
 factorial :: Integer -> Integer
-factorial n = codelab
+factorial 0 = 1
+factorial 1 = 1
+factorial n = n * factorial (n - 1)
+
+-- 
+-- Non-recursive way
+-- factorial n = if n <= 1
+--               then 1
+--	         else n * factorial (n - 1)
 
 -- Consider Euclid's algorithm:
 --
 --   https://en.wikipedia.org/wiki/Greatest_common_divisor#Euclid's_algorithm
+--   https://www.codingninjas.com/blog/2020/07/25/explained-euclids-gcd-algorithm/
+--   Let GCD(x,y) be the GCD of positive integers x and y. 
 gcd :: Int -> Int -> Int
-gcd a b = codelab
+gcd a b
+  -- If x = y, then obviously GCD(x,y) = GCD(x,x) = x 
+  | a == b = a
+
+  -- Euclid’s insight was to observe that, if x > y, then GCD(x,y) = GCD(x-y,y).
+  | a > b = gcd (a - b) b
+
+  -- Just invert the numbers as b is smaller than a
+  | otherwise = gcd b a

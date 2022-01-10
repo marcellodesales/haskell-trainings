@@ -1,9 +1,13 @@
 version: '3'
 services:
   00_setup:
-    build: .
-    image: haskell101:latest
-    command: make -C 00_setup
+    #build: .
+    image: registry.gitlab.com/supercash/core/haskell-stack-base:stack-2.7.3_haskell-8.10.7_13057207-master
+    command: bash 
+    #make -C 00_setup
+    working_dir: /supercash/haskell
+    volumes:
+      - .:/supercash/haskell
   01_functions:
     build: .
     image: haskell101:latest
