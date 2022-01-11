@@ -33,6 +33,8 @@ tests :: Tests
 tests =
   [ test "hours (Minutes 271)" 4 $ C.hours (C.Minutes 271)
   , test "hours (Minutes 15)" 0 $ C.hours (C.Minutes 15)
+  , test "minutes (Minutes 43)" 43 $ C.minutes (C.Minutes 43)
+  , test "seconds (Minutes 53)" 3180 $ C.seconds (C.Minutes 53)
   , test "timeDistance (Minutes 15) (Minutes 25)" (C.Minutes 10) $ C.timeDistance (C.Minutes 15) (C.Minutes 25)
   , test "timeDistance (Minutes 99) (Minutes 47)" (C.Minutes 52) $ C.timeDistance (C.Minutes 99) (C.Minutes 47)
   , test "pointDistance (1, 1) (1, 3)" 2 $ C.pointDistance (1, 1) (1, 3)

@@ -37,7 +37,15 @@ data Minutes = Minutes Int
 --
 --     div a b
 hours :: Minutes -> Int
-hours m = codelab
+hours (Minutes m) = m `div` 60
+
+-- Pattern matching for the seconds is just a multiplier
+seconds :: Minutes -> Int
+seconds (Minutes m) = m * 60
+
+-- Pattern matching for the minutes is an identity function
+minutes :: Minutes -> Int
+minutes (Minutes m) = m
 
 -- In case you need some mathematical functions, you can use
 --
@@ -48,8 +56,17 @@ hours m = codelab
 --
 -- Distance here means the number of minutes to get from m1 to m2.  For
 -- example, for 15 and 25, distance is 10.
-timeDistance :: Minutes -> Minutes -> Minutes
-timeDistance m1 m2 = codelab
+--timeDistance :: Minutes -> Minutes -> Minutes
+--timeDistance (Minutes m) (Minutes n) = if n > m
+--  then (Minutes (n - m))
+--  else (Minutes (m - n))
+
+-- Also having the absolute function when the values are inverted
+-- https://hackage.haskell.org/package/base-4.16.0.0/docs/Prelude.html#v:abs
+-- timeDistance (Minutes m) (Minutes n) = (Minutes ( abs (n - m) ))
+
+-- This is using the $ expression, that helps removing the ()
+timeDistance (Minutes m) (Minutes n) = Minutes $ abs (n - m)
 
 type Point = (Int, Int)
 
@@ -64,4 +81,11 @@ type Point = (Int, Int)
 --     f :: Point -> Int
 --     f (x, y) = abs x + abs y
 pointDistance :: Point -> Point -> Double
-pointDistance p1 p2 = codelab
+
+-- Distance between 2 points is https://www.calculatorsoup.com/calculators/geometry-plane/distance-two-points.php
+-- point distance is sqrt [ (x2 - x1)^2 + (y2 - y1)^2 ]
+-- sqrt = https://hackage.haskell.org/package/numeric-prelude-0.4.3.3/docs/Algebra-Algebraic.html#v:sqrt
+-- power = https://hackage.haskell.org/package/numeric-prelude-0.4.3.3/docs/Number-Complex.html#v:power
+-- Instead of power, we an use the same operator in languages
+-- also, removing the parenthesis with the $ operator
+pointDistance (x1, y1) (x2, y2) = sqrt . fromIntegral $ (x2 - x1)^2 + (y2 - y1)^2
