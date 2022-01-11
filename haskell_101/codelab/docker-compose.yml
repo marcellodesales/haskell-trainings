@@ -11,6 +11,9 @@ x-haskell-docker-setup: &generic-haskell-runtime
 x-docker-cli-mode: &docker-cli-mode
   entrypoint: /bin/sh -c
   command: bash
+  # Preserve terminal colors when running containers
+  # https://github.com/docker/compose/issues/2231#issuecomment-425135985
+  tty: yes
 
 ####
 #### you can execute the code as follows:
