@@ -13,11 +13,11 @@ RUN --mount=type=bind,target=/docker-context \
     find . -type f \( -iname \*.cabal -o -iname \*.yaml\* \) -mindepth 0 -maxdepth 2 \
          -exec cp --parents "{}" /google/trainings/haskell/cabal/ \;
 
-FROM haskell:8.10.7
+FROM registry.gitlab.com/supercash/core/haskell-stack-base:stack-2.7.3_haskell-8.10.7_13057207-master
 
 # Add vim to enable users to edit files locally while running within a container
-RUN apt-get update && \
-     apt-get install -y vim
+RUN apk update && \
+    apk add vim
 
 WORKDIR /google/trainings/haskell-101
 
