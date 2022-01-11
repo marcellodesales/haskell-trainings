@@ -63,3 +63,39 @@ make: Leaving directory '/01_functions'
 Running the first time would result in downloading and compiling needed dependencies (omitted from the above screen output).
 
 When done, you can cleanup Docker services with `docker-compose down`.
+
+# Resolving with docker-compose
+
+```console
+$ docker-compose up --build 02_datatypes
+Building 02_datatypes
+[+] Building 0.2s (10/10) FINISHED
+ => [internal] load build definition from Dockerfile                                                                                                                      0
+ => => transferring dockerfile: 37B                                                                                                                                       0
+ => [internal] load .dockerignore                                                                                                                                         0
+ => => transferring context: 2B                                                                                                                                           0
+ => [internal] load metadata for registry.gitlab.com/supercash/core/haskell-stack-base:stack-2.7.3_haskell-8.10.7_13057207-master                                         0
+ => [1/5] FROM registry.gitlab.com/supercash/core/haskell-stack-base:stack-2.7.3_haskell-8.10.7_13057207-master                                                           0
+ => [internal] load build context                                                                                                                                         0
+ => => transferring context: 19.90kB                                                                                                                                      0
+ => CACHED [2/5] WORKDIR /google/trainings/haskell                                                                                                                        0
+ => CACHED [3/5] COPY . .                                                                                                                                                 0
+ => CACHED [4/5] RUN ls -d */ | awk '{ print $1 }' | xargs -I {} cp $(pwd)/Makefile $(pwd)/{}                                                                             0
+ => CACHED [5/5] RUN ls -d */ | awk '{ print $1 }' | xargs -I {} make -C {} deps                                                                                          0
+ => exporting to image                                                                                                                                                    0
+ => => exporting layers                                                                                                                                                   0
+ => => writing image sha256:6d799087e01a19d121c45ecc60a0ebdcfe1e0d6155369d01efe135cb4d8544cc                                                                              0
+ => => naming to docker.io/google/haskell-trainings                                                                                                                       0
+Starting codelab_02_datatypes_1 ... done
+Attaching to codelab_02_datatypes_1
+02_datatypes_1     | make: Entering directory '/google/trainings/haskell/02_datatypes'
+02_datatypes_1     | hours (Minutes 271)                       OK got: 4
+02_datatypes_1     | hours (Minutes 15)                        OK got: 0
+02_datatypes_1     | timeDistance (Minutes 15) (Minutes 25)    !! error: SOMETHING IS NOT IMPLEMENTED!
+02_datatypes_1     | timeDistance (Minutes 99) (Minutes 47)    !! error: SOMETHING IS NOT IMPLEMENTED!
+02_datatypes_1     | pointDistance (1, 1) (1, 3)               !! error: SOMETHING IS NOT IMPLEMENTED!
+02_datatypes_1     | pointDistance (3, 4) (0, 0)               !! error: SOMETHING IS NOT IMPLEMENTED!
+02_datatypes_1     | make: *** [Makefile:34: run] Error 1
+02_datatypes_1     | make: Leaving directory '/google/trainings/haskell/02_datatypes'
+codelab_02_datatypes_1 exited with code 2
+```
