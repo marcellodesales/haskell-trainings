@@ -68,7 +68,6 @@ minutes (Minutes m) = m
 -- This is using the $ expression, that helps removing the ()
 timeDistance (Minutes m) (Minutes n) = Minutes $ abs (n - m)
 
-
 type Point = (Int, Int)
 
 -- Do not forget about Hoogle (see above), should you need a new function.
@@ -82,4 +81,11 @@ type Point = (Int, Int)
 --     f :: Point -> Int
 --     f (x, y) = abs x + abs y
 pointDistance :: Point -> Point -> Double
-pointDistance p1 p2 = codelab
+
+-- Distance between 2 points is https://www.calculatorsoup.com/calculators/geometry-plane/distance-two-points.php
+-- point distance is sqrt [ (x2 - x1)^2 + (y2 - y1)^2 ]
+-- sqrt = https://hackage.haskell.org/package/numeric-prelude-0.4.3.3/docs/Algebra-Algebraic.html#v:sqrt
+-- power = https://hackage.haskell.org/package/numeric-prelude-0.4.3.3/docs/Number-Complex.html#v:power
+-- Instead of power, we an use the same operator in languages
+-- also, removing the parenthesis with the $ operator
+pointDistance (x1, y1) (x2, y2) = sqrt . fromIntegral $ (x2 - x1)^2 + (y2 - y1)^2
