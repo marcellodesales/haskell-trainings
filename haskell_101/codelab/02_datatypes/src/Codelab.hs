@@ -37,7 +37,15 @@ data Minutes = Minutes Int
 --
 --     div a b
 hours :: Minutes -> Int
-hours m = codelab
+hours (Minutes m) = m `div` 60
+
+-- Pattern matching for the seconds is just a multiplier
+seconds :: Minutes -> Int
+seconds (Minutes m) = m * 60
+
+-- Pattern matching for the minutes is an identity function
+minutes :: Minutes -> Int
+minutes (Minutes m) = m
 
 -- In case you need some mathematical functions, you can use
 --
