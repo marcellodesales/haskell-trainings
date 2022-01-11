@@ -56,8 +56,14 @@ minutes (Minutes m) = m
 --
 -- Distance here means the number of minutes to get from m1 to m2.  For
 -- example, for 15 and 25, distance is 10.
-timeDistance :: Minutes -> Minutes -> Minutes
-timeDistance m1 m2 = codelab
+--timeDistance :: Minutes -> Minutes -> Minutes
+--timeDistance (Minutes m) (Minutes n) = if n > m
+--  then (Minutes (n - m))
+--  else (Minutes (m - n))
+
+-- Also having the absolute function when the values are inverted
+-- https://hackage.haskell.org/package/base-4.16.0.0/docs/Prelude.html#v:abs
+timeDistance (Minutes m) (Minutes n) = (Minutes ( abs (n - m) ))
 
 type Point = (Int, Int)
 
