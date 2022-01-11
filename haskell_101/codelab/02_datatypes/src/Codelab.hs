@@ -63,7 +63,11 @@ minutes (Minutes m) = m
 
 -- Also having the absolute function when the values are inverted
 -- https://hackage.haskell.org/package/base-4.16.0.0/docs/Prelude.html#v:abs
-timeDistance (Minutes m) (Minutes n) = (Minutes ( abs (n - m) ))
+-- timeDistance (Minutes m) (Minutes n) = (Minutes ( abs (n - m) ))
+
+-- This is using the $ expression, that helps removing the ()
+timeDistance (Minutes m) (Minutes n) = Minutes $ abs (n - m)
+
 
 type Point = (Int, Int)
 
