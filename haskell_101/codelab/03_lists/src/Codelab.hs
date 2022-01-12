@@ -22,6 +22,14 @@ module Codelab where
 import Internal (codelab)
 import Prelude hiding (null, head, tail, length, and, or, (++))
 
+----
+---- TUTORIAL ON LISTS and PATTERN MATCHING
+---- https://www.haskelltutorials.com/guides/haskell-lists-ultimate-guide.html
+--- Subtle difference between : and [] when pattern-matching
+--- With : you can pattern-match a list with any number of elements. This is \
+--- because the last : matches the remainder of the list. Whereas, with [], 
+--- you can only pattern match a list with an exact number of elements.
+
 -- CODELAB 03: Lists and recursion
 --
 -- The default list is ubiquitous in the Prelude; the default String type
@@ -37,35 +45,47 @@ import Prelude hiding (null, head, tail, length, and, or, (++))
 
 -- null tells you whether a list is empty or not
 null :: [a] -> Bool
-null fixme = codelab
+-- I couldn't do this by myself... the pattern is there, but it's not so clear initially about the syntax
+null [] = True
+-- I had to look for the underline patter again, which takes "anything else" on the pattern matching
+null  _ = False
 
 -- head returns the first element of the list.
 --
 -- On an empty list, head panics: functions that can panic are "partial"
 head :: [a] -> a
-head []    = error "head: empty list"
-head fixme = codelab
+head []      = error "head: empty list"
+head (h: _)  = h
 
 -- tail returns everything but the first element.
 -- If the list is empty it panics
 tail :: [a] -> [a]
-tail = codelab
+tail     [] = error "tail: empty list"
+tail (_: t) = t
 
 -- Do you remember it from the slides?
 length :: [a] -> Int
-length l = codelab
+length    []  = 0
+length (_: t) = 1 + length t
 
 -- "and" returns True if all the boolean values in the list are True.
 -- What do you think it returns for an empty list?
 and :: [Bool] -> Bool
-and l = codelab
+and    []      = True
+and (h:t)      = h && and t
 
 -- "or" returns True if at least one value in the list is True.
 -- What do you think it returns for an empty list?
 or :: [Bool] -> Bool
-or l = codelab
+or []         = False
+or (h:t)      = h || or t
 
 -- "(++)" is the concatenation operator.  To concatenate two linked lists
 -- you have to chain the second one at the end of the first one.
 (++) :: [a] -> [a] -> [a]
-l1 ++ l2 = codelab
+
+-- To implement this it is still confusing to use the elements of lists 
+-- The difference between the [] anbd : are very subtle
+[] ++ list2   = list2
+-- If one of the lists is not empty, then we take the head and the tail the concat
+(h1:t1) ++ l2 = h1 : t1 ++ l2
