@@ -25,6 +25,10 @@ import Prelude hiding (null, head, tail, length, and, or, (++))
 ----
 ---- TUTORIAL ON LISTS and PATTERN MATCHING
 ---- https://www.haskelltutorials.com/guides/haskell-lists-ultimate-guide.html
+--- Subtle difference between : and [] when pattern-matching
+--- With : you can pattern-match a list with any number of elements. This is \
+--- because the last : matches the remainder of the list. Whereas, with [], 
+--- you can only pattern match a list with an exact number of elements.
 
 -- CODELAB 03: Lists and recursion
 --
@@ -61,7 +65,8 @@ tail (_: t) = t
 
 -- Do you remember it from the slides?
 length :: [a] -> Int
-length l = codelab
+length    []  = 0
+length (_: t) = 1 + length t
 
 -- "and" returns True if all the boolean values in the list are True.
 -- What do you think it returns for an empty list?
