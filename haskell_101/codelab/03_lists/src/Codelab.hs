@@ -37,7 +37,10 @@ import Prelude hiding (null, head, tail, length, and, or, (++))
 
 -- null tells you whether a list is empty or not
 null :: [a] -> Bool
-null fixme = codelab
+-- I couldn't do this by myself... the pattern is there, but it's not so clear initially about the syntax
+null [] = True
+-- I had to look for the underline patter again, which takes "anything else" on the pattern matching
+null  _ = False
 
 -- head returns the first element of the list.
 --
