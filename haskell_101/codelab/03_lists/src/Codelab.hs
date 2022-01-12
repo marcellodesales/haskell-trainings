@@ -60,7 +60,7 @@ head (h: _)  = h
 -- tail returns everything but the first element.
 -- If the list is empty it panics
 tail :: [a] -> [a]
-tail  [] = error "tail: empty list"
+tail     [] = error "tail: empty list"
 tail (_: t) = t
 
 -- Do you remember it from the slides?
@@ -83,4 +83,9 @@ or (h:t)      = h || or t
 -- "(++)" is the concatenation operator.  To concatenate two linked lists
 -- you have to chain the second one at the end of the first one.
 (++) :: [a] -> [a] -> [a]
-l1 ++ l2 = codelab
+
+-- To implement this it is still confusing to use the elements of lists 
+-- The difference between the [] anbd : are very subtle
+[] ++ list2   = list2
+-- If one of the lists is not empty, then we take the head and the tail the concat
+(h1:t1) ++ l2 = h1 : t1 ++ l2
