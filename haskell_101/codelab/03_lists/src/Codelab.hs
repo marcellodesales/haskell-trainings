@@ -71,12 +71,14 @@ length (_: t) = 1 + length t
 -- "and" returns True if all the boolean values in the list are True.
 -- What do you think it returns for an empty list?
 and :: [Bool] -> Bool
-and l = codelab
+and    []      = True
+and (h:t)      = h && and t
 
 -- "or" returns True if at least one value in the list is True.
 -- What do you think it returns for an empty list?
 or :: [Bool] -> Bool
-or l = codelab
+or []         = False
+or (h:t)      = h || or t
 
 -- "(++)" is the concatenation operator.  To concatenate two linked lists
 -- you have to chain the second one at the end of the first one.
