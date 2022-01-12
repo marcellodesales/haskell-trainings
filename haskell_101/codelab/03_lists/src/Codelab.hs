@@ -51,12 +51,13 @@ null  _ = False
 -- On an empty list, head panics: functions that can panic are "partial"
 head :: [a] -> a
 head []      = error "head: empty list"
-head (a: _)  = a
+head (h: _)  = h
 
 -- tail returns everything but the first element.
 -- If the list is empty it panics
 tail :: [a] -> [a]
-tail = codelab
+tail  [] = error "tail: empty list"
+tail (_: t) = t
 
 -- Do you remember it from the slides?
 length :: [a] -> Int
