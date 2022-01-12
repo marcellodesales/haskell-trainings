@@ -22,6 +22,10 @@ module Codelab where
 import Internal (codelab)
 import Prelude hiding (null, head, tail, length, and, or, (++))
 
+----
+---- TUTORIAL ON LISTS and PATTERN MATCHING
+---- https://www.haskelltutorials.com/guides/haskell-lists-ultimate-guide.html
+
 -- CODELAB 03: Lists and recursion
 --
 -- The default list is ubiquitous in the Prelude; the default String type
