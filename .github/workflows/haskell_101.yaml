@@ -85,15 +85,24 @@ jobs:
         #  and uses GitHub Actions magic (::set-output) to set an output
         #  variable https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
         run: |
-          ls -lar
-          EXERCISES=$(find ${{env.DOCKER_CONTEXT_PATH}} -maxdepth 1 -type d -exec echo {} +;)
-          GITHUB_MATRIX_PACKAGES=$(echo '{ "package" : ['
-            echo $EXERCISES | sed 's/ /, /g' | xargs -n 1 echo | tail -n +2 | awk -F"/" '{print $3}' | sed -r 's/^([^,]*)(,?)$/"\1"\2/'
-          echo "]}")
+          #ls -lar
+          # https://stackoverflow.com/questions/22434290/jq-bash-make-json-array-from-variable/54576004#54576004
+          cd ${{env.DOCKER_CONTEXT_PATH}}
+
+          # Get the keys in docker-compose https://stackoverflow.com/questions/23118341/how-to-get-key-names-from-json-using-jq/23118607#23118607
+          EXERCISES=$(docker-compose config | docker run --rm -i mikefarah/yq e . - -o json | docker run --rm -i imega/jq -r -c '.services | keys')
+
+          # Convert them into the matrix object
+          GITHUB_MATRIX_PACKAGES=$(echo $EXERCISES | docker run --rm -i imega/jq '. | sort' | docker run --rm -i imega/jq -c '{"package": .}')
           echo "Dynamic github matrix packages: ${GITHUB_MATRIX_PACKAGES}"
 
+          # Build a matrix of values to generate parallel stages, one for each exercise
+          # https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
+          # https://rnorth.org/faster-parallel-github-builds/
+          # https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
+          # https://github.com/r-dbi/DBItest/blob/main/.github/workflows/backends.yaml
           echo "Setting the value as the matrix..."
-          echo "::set-output name=matrix::${GITHUB_MATRIX_PACKAGES}"
+          echo "::set-output name=matrix::$GITHUB_MATRIX_PACKAGES"
 
       - name: Build docker image
         # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
@@ -135,7 +144,7 @@ jobs:
       matrix: ${{fromJson(needs.build.outputs.matrix)}}
 
     steps:
-      - name: Download artifact cloner.dockerimage
+      - name: Download built training-image
         uses: actions/download-artifact@v2
         with:
           name: training-image
@@ -155,7 +164,9 @@ jobs:
           fetch-depth: 1
 
       - name: Show cloned files structure
-        run: docker container run --rm -v $(pwd):$(pwd) iankoulski/tree $(pwd)
+        run: |
+          docker container run --rm -v $(pwd):$(pwd) iankoulski/tree $(pwd)
+          ls -lar
 
       - name: Run ${{matrix.package}} tests
         # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
@@ -164,12 +175,11 @@ jobs:
           cd ${{env.DOCKER_CONTEXT_PATH}}
 
           echo "Since the image is already built and loaded: docker-compose: ${COMPOSE_IMAGE_NAME} ${{matrix.package}}"
-          docker-compose up ${{matrix.package}} --exit-code-from
-          docker-compose up --exit-code-from ${{matrix.package}}
+          docker-compose run ${{matrix.package}}
 
   deploy:
     name: Tag and Push the docker images
-    needs: test
+    needs: build
     runs-on: ubuntu-latest
     container:
       image: docker/compose:1.29.2
