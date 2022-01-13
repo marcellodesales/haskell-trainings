@@ -87,10 +87,12 @@ jobs:
 
       - name: Saving the built docker image as a local file
         run: |
-          echo "Saving the image locally..."
+          echo "Saving the image locally at dir ${{env.LOCAL_IMAGE_BIN_PATH}}"
+          mkdir ${{env.LOCAL_IMAGE_BIN_PATH}}
           docker save -o ${{env.LOCAL_IMAGE_BIN_PATH}}/${{env.LOCAL_IMAGE_BIN_NAME}} ${COMPOSE_IMAGE_NAME}
 
           ls -la ${{env.LOCAL_IMAGE_BIN_PATH}}/${{env.LOCAL_IMAGE_BIN_NAME}}
+          ls -lah ${{env.LOCAL_IMAGE_BIN_PATH}}/${{env.LOCAL_IMAGE_BIN_NAME}}
 
       - name: Upload Docker Image to pipelie artifacts
         uses: actions/upload-artifact@v2
@@ -113,7 +115,7 @@ jobs:
 
       - name: Load Docker Image Binary for cache
         run: |
-          ls -la ${{env.LOCAL_IMAGE_BIN_PATH}}/${{env.LOCAL_IMAGE_BIN_NAME}}
+          ls -la ${{env.LOCAL_IMAGE_BIN_NAME}}
           docker load -i ${{env.LOCAL_IMAGE_BIN_NAME}}
 
       - name: List the docker images locally
