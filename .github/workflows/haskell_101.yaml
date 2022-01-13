@@ -57,6 +57,10 @@ jobs:
     container:
       image: docker/compose:1.29.2
 
+   # Declare our output variable https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
     steps:
       - name: Fetch only the top commit
         uses: actions/checkout@v2
@@ -72,7 +76,26 @@ jobs:
           password: ${{ secrets.REGISTRY_GITLAB_TOKEN }}
 
       - name: Show cloned files scructure
-        run: docker container run --rm -v $(pwd):$(pwd) iankoulski/tree $(pwd)
+        run: |
+          docker container run --rm -v $(pwd):$(pwd) iankoulski/tree $(pwd)
+          ls -lar
+
+      - id: set-matrix
+        # The below outputs a JSON array of check tasks for each subproject
+        #  and uses GitHub Actions magic (::set-output) to set an output
+        #  variable https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
+        run: |
+          ls -lar
+          EXERCISES=$(find ${{env.DOCKER_CONTEXT_PATH}} -maxdepth 1 -type d -exec echo {} +;)
+          EXERCISES=$(echo $EXERCISES | tr " " "\n" | tail -n +2 | awk -F"/" '{print $3}')
+          echo "List of exercises: ${EXERCISES}"
+
+          GITHUB_MATRIX_PACKAGES=$(docker run --rm -i imega/jq -nc '{package: $ARGS.positional[0] | split("\n")}' --args ${EXERCISES[@]})
+          echo "Dynamic github matrix packages"
+          echo ${GITHUB_MATRIX_PACKAGES} | docker run --rm -i imega/jq .
+
+          echo "Setting the value as the matrix..."
+          echo "::set-output name=matrix::${GITHUB_MATRIX_PACKAGES}"
 
       - name: Build docker image
         # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
@@ -107,6 +130,12 @@ jobs:
     container:
       image: docker/compose:1.29.2
 
+    # Composite github : https://stackoverflow.com/questions/65242830/in-a-github-actions-workflow-is-there-a-way-to-have-multiple-jobs-reuse-the-sam/65243912#65243912
+    # Just use a matrix to run the tests for each individual exercise
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.build.outputs.matrix)}}
+
     steps:
       - name: Download artifact cloner.dockerimage
         uses: actions/download-artifact@v2
@@ -127,17 +156,18 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Show cloned files scructure
+      - name: Show cloned files structure
         run: docker container run --rm -v $(pwd):$(pwd) iankoulski/tree $(pwd)
 
-      - name: Run all tests in parallel
+      - name: Run ${{matrix.package}} tests
         # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
         run: |
           echo "Building the context dir ${{env.DOCKER_CONTEXT_PATH}}"
           cd ${{env.DOCKER_CONTEXT_PATH}}
 
-          echo "Since the image is already built and loaded, we can just run... docker-compose: ${COMPOSE_IMAGE_NAME}"
-          docker-compose up
+          echo "Since the image is already built and loaded: docker-compose: ${COMPOSE_IMAGE_NAME} ${{matrix.package}}"
+          docker-compose up ${{matrix.package}} --exit-code-from
+          docker-compose up --exit-code-from ${{matrix.package}}
 
   deploy:
     name: Tag and Push the docker images
