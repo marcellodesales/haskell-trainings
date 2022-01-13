@@ -1,0 +1,124 @@
+# https://www.freecodecamp.org/news/a-lightweight-tool-agnostic-ci-cd-flow-with-github-actions/
+name: main
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - feature/**
+      - bugfix/**
+      - hotfix/**
+    paths-ignore:
+      - '**/README.md' # https://stackoverflow.com/questions/62968897/is-it-possible-to-not-run-github-action-for-readme-updates/62972393#62972393
+  pull_request:
+    branches: [ master, develop, feature/**, bugfix/** ]
+
+# https://faun.pub/building-a-ci-cd-pipeline-with-github-actions-and-docker-part-1-a9d8709c31fb
+jobs:
+
+  build:
+    name: Build CLI Binaries
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: docker/compose:1.29.2
+
+    env:
+      DOCKER_IMAGE_TAG: "docker.pkg.github.com/${GITHUB_REPOSITORY}/${GITHUB_REF##*/}"
+      # https://github.com/actions/starter-workflows/issues/68#issuecomment-524665878
+
+      DOCKER_CONTEXT_PATH: "haskell_101/codelab"
+      IMAGE_NAME_SUFFIX: haskell_101
+
+    steps:
+      - name: Repo Name
+        run: |
+           echo "GITHUB_IMAGE_REPO_NAME=$( echo ${GITHUB_REPOSITORY} | awk -F'/' '{ print $2 }' )-${{env.IMAGE_NAME_SUFFIX}}" >> $GITHUB_ENV
+
+      - name: Public Docker Repo Name
+        run: |
+           echo "PUBLIC_DOCKER_REPO=$( echo ${GITHUB_REPOSITORY} | sed 's/-docker//g' | sed 's/docker-//g' )" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v2
+        with:
+          # https://github.com/actions/checkout/pull/258 needs to fetch all tags so that Makefile can make the correct version
+          fetch-depth: 0
+
+      - name: Build docker image
+        # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
+        run: |
+          echo "Building the context dir ${{env.DOCKER_CONTEXT_PATH}}"
+          cd ${{env.DOCKER_CONTEXT_PATH}}
+
+          COMPOSE_IMAGE_NAME=$(docker-compose config | docker run --rm -i mikefarah/yq e . - -o json | docker run --rm -i imega/jq -r '.services | first(.[]).image')
+          echo "Building image from docker-compose: ${IMAGE_NAME}"
+
+          docker-compose build
+
+          DEFAULT_REPO_IMAGE_TAG=docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA}
+          echo "Tagging the docker-compose image '${COMPOSE_IMAGE_NAME}' as '${DEFAULT_REPO_IMAGE_TAG}'"
+          docker tag ${COMPOSE_IMAGE_NAME} ${DEFAULT_REPO_IMAGE_TAG} 
+
+      - name: Tag with the branch name
+        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA} docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_REF##*/}
+
+      - name: Tag the latest image
+        if: endsWith(github.ref, '/main')
+        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA} docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:latest
+
+      # https://github.com/marcellodesales/cloner/packages?package_type=Docker
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: docker.pkg.github.com
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_GITHUB_TOKEN }}
+
+      # Publish the Branch Docker Images to Github Container Registry
+      - name: Push latest Docker Image
+        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA}
+
+      # Publish the Sha  Docker Images to Github Container Registry
+      - name: Push Docker Image
+        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_REF##*/}
+
+       # Publish the Sha  Docker Images to Github Container Registry
+      - name: Push Docker Image latest from master
+        if: endsWith(github.ref, '/main')
+        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:latest
+
+      - name: Docker image to push
+        run: echo "Image repo is '${{env.PUBLIC_DOCKER_REPO}}'"
+
+      # https://github.com/marcellodesales/cloner/packages?package_type=Docker
+      - name: Login to Dockerhub Registry
+        uses: docker/login-action@v1
+        with:
+          #registry: docker.com
+          username: marcellodesales
+          password: ${{ secrets.REGISTRY_DOCKERHUB_TOKEN }}
+
+      - name: Tag the latest image in the public repo
+        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA} ${{env.PUBLIC_DOCKER_REPO}}:${GITHUB_SHA}
+
+      - name: Tag the latest image in the public repo
+        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA} ${{env.PUBLIC_DOCKER_REPO}}:${GITHUB_REF##*/}
+
+       # Latest version of image
+      - name: Docker Push the latest image
+        if: endsWith(github.ref, '/main') || endsWith(github.ref, '/master')
+        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA} ${{env.PUBLIC_DOCKER_REPO}}
+
+      - name: Tag the latest image in the public repo
+        run: docker push ${{env.PUBLIC_DOCKER_REPO}}:${GITHUB_SHA}
+
+      - name: Tag the latest image in the public repo
+        run: docker push ${{env.PUBLIC_DOCKER_REPO}}:${GITHUB_REF##*/}
+
+       # Latest version of image
+      - name: Docker Push the latest image
+        if: endsWith(github.ref, '/main') || endsWith(github.ref, '/master')
+        run: docker push ${{env.PUBLIC_DOCKER_REPO}}
