@@ -51,7 +51,7 @@ jobs:
            echo "PUBLIC_DOCKER_REPO=$(echo ${GITHUB_REPOSITORY} | sed 's/-docker//g' | sed 's/docker-//g' )" >> $GITHUB_ENV
 
   build:
-    name: Build CLI Binaries
+    name: Build Docker Image with Haskell Training-101
     needs: setup
     runs-on: ubuntu-latest
     container:
@@ -102,7 +102,7 @@ jobs:
 
   test:
     needs: build
-    name: Testing
+    name: Executing the Solutions
     runs-on: ubuntu-latest
     container:
       image: docker/compose:1.29.2
