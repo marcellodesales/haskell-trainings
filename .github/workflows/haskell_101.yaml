@@ -75,7 +75,7 @@ jobs:
           COMPOSE_IMAGE_NAME=$(docker-compose config | docker run --rm -i mikefarah/yq e . - -o json | docker run --rm -i imega/jq -r '.services | first(.[]).image')
           echo "COMPOSE_IMAGE_NAME=${COMPOSE_IMAGE_NAME}" >> $GITHUB_ENV
           echo "Building image from docker-compose: ${COMPOSE_IMAGE_NAME}"
-          docker-compose build
+          DOCKER_BUILDKIT=1 docker-compose build
 
       - name: Saving the built docker image as a local file
         run: |
