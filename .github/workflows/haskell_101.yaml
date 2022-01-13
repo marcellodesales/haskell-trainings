@@ -136,9 +136,9 @@ jobs:
           echo "Since the image is already built and loaded, we can just run... docker-compose: ${COMPOSE_IMAGE_NAME}"
           docker-compose up
 
-  push:
+  deploy:
     name: Tag and Push the docker images
-    needs: build
+    needs: test
     runs-on: ubuntu-latest
     container:
       image: docker/compose:1.29.2
