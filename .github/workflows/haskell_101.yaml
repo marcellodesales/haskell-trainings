@@ -133,6 +133,9 @@ jobs:
       - name: Run all tests in parallel
         # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
         run: |
+          echo "Building the context dir ${{env.DOCKER_CONTEXT_PATH}}"
+          cd ${{env.DOCKER_CONTEXT_PATH}}
+
           echo "Since the image is already built and loaded, we can just run... docker-compose: ${COMPOSE_IMAGE_NAME}"
           docker-compose up
 
