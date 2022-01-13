@@ -87,12 +87,10 @@ jobs:
         run: |
           ls -lar
           EXERCISES=$(find ${{env.DOCKER_CONTEXT_PATH}} -maxdepth 1 -type d -exec echo {} +;)
-          EXERCISES=$(echo $EXERCISES | tr " " "\n" | tail -n +2 | awk -F"/" '{print $3}')
-          echo "List of exercises: ${EXERCISES}"
-
-          GITHUB_MATRIX_PACKAGES=$(docker run --rm -i imega/jq -nc '{package: $ARGS.positional[0] | split("\n")}' --args ${EXERCISES[@]})
-          echo "Dynamic github matrix packages"
-          echo ${GITHUB_MATRIX_PACKAGES} | docker run --rm -i imega/jq .
+          GITHUB_MATRIX_PACKAGES=$(echo '{ "package" : ['
+            echo $EXERCISES | sed 's/ /, /g' | xargs -n 1 echo | tail -n +2 | awk -F"/" '{print $3}' | sed -r 's/^([^,]*)(,?)$/"\1"\2/'
+          echo "]}")
+          echo "Dynamic github matrix packages: ${GITHUB_MATRIX_PACKAGES}"
 
           echo "Setting the value as the matrix..."
           echo "::set-output name=matrix::${GITHUB_MATRIX_PACKAGES}"
