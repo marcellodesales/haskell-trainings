@@ -60,6 +60,7 @@ jobs:
    # Declare our output variable https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      container_name: ${{ steps.set-compose_image_name.outputs.image_name }}
 
     steps:
       - name: Fetch only the top commit
@@ -114,6 +115,21 @@ jobs:
           echo "COMPOSE_IMAGE_NAME=${COMPOSE_IMAGE_NAME}" >> $GITHUB_ENV
           echo "Building image from docker-compose: ${COMPOSE_IMAGE_NAME}"
           DOCKER_BUILDKIT=1 docker-compose build
+
+      - id: set-compose_image_name
+        # The below outputs a JSON array of check tasks for each subproject
+        #  and uses GitHub Actions magic (::set-output) to set an output
+        #  variable https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
+        run: |
+          # Build a matrix of values to generate parallel stages, one for each exercise
+          # https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
+          # https://rnorth.org/faster-parallel-github-builds/
+          # https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
+          # https://github.com/r-dbi/DBItest/blob/main/.github/workflows/backends.yaml
+          echo "Setting the value of the container image name: ${COMPOSE_IMAGE_NAME}"
+
+          # MAKE SURE TO NOT USE ${} in variables for set-output
+          echo "::set-output name=image_name::$COMPOSE_IMAGE_NAME"
 
       - name: Saving the built docker image as a local file
         run: |
@@ -193,25 +209,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.REGISTRY_GITHUB_TOKEN }}
 
-      - name: Tagging the docker-compose image '${COMPOSE_IMAGE_NAME}' as '${DOCKER_IMAGE_TAG}'
-        run: docker tag ${COMPOSE_IMAGE_NAME} ${DEFAULT_REPO_IMAGE_TAG}
+      - name: Tag & Push the docker-compose image '${{needs.build.outputs.image_name}}' as '${{env.DOCKER_IMAGE_TAG}}'
+        run: docker tag ${{needs.build.outputs.image_name}} ${{env.DOCKER_IMAGE_TAG}}
 
-      - name: Tag with the branch name
-        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA} docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_REF##*/}
+      - name: Tag & Push the docker-compose image '${{needs.build.outputs.image_name}}' as 'docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_REF##*/}'
+        run: docker tag ${{needs.build.outputs.image_name}} docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_REF##*/}
 
-      - name: Tag the latest image
-        if: endsWith(github.ref, '/main')
-        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA} docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:latest
-
-      # Publish the Branch Docker Images to Github Container Registry
-      - name: Push latest Docker Image
-        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_SHA}
-
-      # Publish the Sha  Docker Images to Github Container Registry
-      - name: Push Docker Image
-        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:${GITHUB_REF##*/}
-
-       # Publish the Sha  Docker Images to Github Container Registry
-      - name: Push Docker Image latest from master
+      - name: Tag & Push the docker-compose image '${{needs.build.outputs.image_name}}' as 'docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:latest'
         if: endsWith(github.ref, '/main') || endsWith(github.ref, '/master')
-        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:latest
+        run: docker ${{needs.build.outputs.image_name}} docker.pkg.github.com/${GITHUB_REPOSITORY}/${{env.GITHUB_IMAGE_REPO_NAME}}:latest
