@@ -38,6 +38,7 @@ jobs:
       defaultDockerImageRepo: ${{steps.set-base-values.outputs.defaultDockerImageRepo}}
       defaultDockerImageVersion: ${{steps.set-base-values.outputs.defaultDockerImageVersion}}
       defaultDockerImageBranchTag: ${{steps.set-base-values.outputs.defaultDockerImageBranchTag}}
+      defaultDockerImageBranchShaTag: ${{steps.set-base-values.outputs.defaultDockerImageBranchShaTag}}
 
     steps:
       - name: Set default envs from the env above
@@ -54,12 +55,17 @@ jobs:
         #  variable https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
         # https://github.community/t/sharing-a-variable-between-jobs/16967/14
         run: |
-          BRANCH_TAG=${IMAGE_NAME_SUFFIX}-$(echo ${GITHUB_SHA} |  cut -c1-7)-${GITHUB_REF##*/}
-          echo "Branch tag to use: ${BRANCH_TAG}"
+          # The repo name only without refs
+          BRANCH_TAG=${GITHUB_REF##*/}
+
+          # The branch and sha together makes it easier to find
+          BRANCH_SHA_TAG=${BRANCH_TAG}-$(echo ${GITHUB_SHA} | cut -c1-7)
+          echo "Branch tag to use: ${BRANCH_TAG} and ${BRANCH_SHA_TAG}"
 
           echo "::set-output name=defaultDockerImageRepo::$DEFAULT_DOCKER_IMAGE_REPO"
           echo "::set-output name=defaultDockerImageVersion::$DEFAULT_DOCKER_IMAGE_VERSION"
           echo "::set-output name=defaultDockerImageBranchTag::$BRANCH_TAG"
+          echo "::set-output name=defaultDockerImageBranchShaTag::$BRANCH_SHA_TAG"
 
   build:
     name: Build Docker Image with Haskell Training-101
@@ -118,6 +124,7 @@ jobs:
 
       # https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package
       # https://github.community/t/github-container-registry-ghcr-io-packages-not-appearing-in-webinterface/130077
+      # Manually make the image public by going to the module's settings, Danger Zone
       - name: Associate Dockerfile to the repo
         run: |
           env
@@ -268,6 +275,11 @@ jobs:
         run: |
           docker tag ${{needs.build.outputs.image_name}} ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchTag}}
           docker push ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchTag}}
+
+      - name: Tag & Push BRANCH-SHA docker-compose image '${{needs.build.outputs.image_name}}' as '${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchShaTag}}'
+        run: |
+          docker tag ${{needs.build.outputs.image_name}} ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchShaTag}}
+          docker push ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchShaTag}}
 
       - if: endsWith(github.ref, '/main') || endsWith(github.ref, '/master')
         name: Tag & Push LATEST docker-compose image '${{needs.build.outputs.image_name}}' as '${{needs.setup.outputs.defaultDockerImageRepo}}:latest'
