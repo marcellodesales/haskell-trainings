@@ -35,8 +35,6 @@ jobs:
 
     # https://github.community/t/sharing-a-variable-between-jobs/16967/14
     outputs:
-      imageNameSuffix: ${{steps.set-base-values.outputs.imageNameSuffix}}
-      dockerContextPath: ${{steps.set-base-values.outputs.dockerContextPath}}
       defaultDockerImageRepo: ${{steps.set-base-values.outputs.defaultDockerImageRepo}}
       defaultDockerImageVersion: ${{steps.set-base-values.outputs.defaultDockerImageVersion}}
       defaultDockerImageBranchTag: ${{steps.set-base-values.outputs.defaultDockerImageBranchTag}}
@@ -47,16 +45,8 @@ jobs:
            echo "IMAGE_NAME_SUFFIX=${{env.IMAGE_NAME_SUFFIX}}" >> $GITHUB_ENV
            echo "DOCKER_CONTEXT_PATH=${{env.DOCKER_CONTEXT_PATH}}" >> $GITHUB_ENV
            # registry has renamed: https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-docker-registry
-           echo "DEFAULT_DOCKER_IMAGE_REPO=ghcr.io/${GITHUB_REPOSITORY}" >> $GITHUB_ENV
-           echo "DEFAULT_DOCKER_IMAGE_VERSION=${IMAGE_NAME_SUFFIX}-${GITHUB_SHA}" >> $GITHUB_ENV
-
-      - name: Parse and set the github repo name for the docker image
-        run: |
-           echo "GITHUB_IMAGE_REPO_NAME=$(echo ${GITHUB_REPOSITORY} | awk -F'/' '{ print $2 }' )-${{env.IMAGE_NAME_SUFFIX}}" >> $GITHUB_ENV
-
-      - name: Parse and set the docker repo name
-        run: |
-           echo "PUBLIC_DOCKER_REPO=$(echo ${GITHUB_REPOSITORY} | sed 's/-docker//g' | sed 's/docker-//g' )" >> $GITHUB_ENV
+           echo "DEFAULT_DOCKER_IMAGE_REPO=ghcr.io/${GITHUB_REPOSITORY}/${IMAGE_NAME_SUFFIX}" >> $GITHUB_ENV
+           echo "DEFAULT_DOCKER_IMAGE_VERSION=${GITHUB_SHA}" >> $GITHUB_ENV
 
       - id: set-base-values
         # The below outputs a JSON array of check tasks for each subproject
@@ -67,9 +57,6 @@ jobs:
           BRANCH_TAG=${IMAGE_NAME_SUFFIX}-$(echo ${GITHUB_SHA} |  cut -c1-7)-${GITHUB_REF##*/}
           echo "Branch tag to use: ${BRANCH_TAG}"
 
-          echo "Setting the value of the image suffix: ${{env.IMAGE_NAME_SUFFIX}}"
-          echo "::set-output name=imageNameSuffix::$IMAGE_NAME_SUFFIX"
-          echo "::set-output name=dockerContextPath::$DOCKER_CONTEXT_PATH"
           echo "::set-output name=defaultDockerImageRepo::$DEFAULT_DOCKER_IMAGE_REPO"
           echo "::set-output name=defaultDockerImageVersion::$DEFAULT_DOCKER_IMAGE_VERSION"
           echo "::set-output name=defaultDockerImageBranchTag::$BRANCH_TAG"
@@ -128,6 +115,21 @@ jobs:
           # https://github.com/r-dbi/DBItest/blob/main/.github/workflows/backends.yaml
           echo "Setting the value as the matrix..."
           echo "::set-output name=matrix::$GITHUB_MATRIX_PACKAGES"
+
+      # https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package
+      # https://github.community/t/github-container-registry-ghcr-io-packages-not-appearing-in-webinterface/130077
+      - name: Associate Dockerfile to the repo
+        run: |
+          env
+          echo "IS THIS ${GITHUB_REPOSITORY}"
+          echo "In order to associate the docker image to the repo, we need to associate the Dockerfile to the repo"
+          export LABEL_VALUE=https://github.com/${GITHUB_REPOSITORY}
+          echo "Adding 'LABEL org.opencontainers.image.source ${LABEL_VALUE}' to Dockerfile"
+          
+          # Switch to the context dir and update all dockerfiles that will be used
+          cd ${{env.DOCKER_CONTEXT_PATH}}
+          # https://stackoverflow.com/questions/845863/how-to-use-in-an-xargs-command/70230514#70230514
+          find . -name 'Dockerfile' -print0 | xargs -0 grep -iL "org.opencontainers.image.source" | xargs -0 -I{} sh -c 'echo "LABEL org.opencontainers.image.source ${LABEL_VALUE}" >> {}' -- {}
 
       - name: Build docker image
         # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
