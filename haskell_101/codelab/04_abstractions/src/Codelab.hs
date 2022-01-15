@@ -22,7 +22,7 @@ module Codelab where
 import Internal (codelab)
 import Prelude hiding (map, filter, foldr, foldl)
 
--- CODELAB 04: Abstractions
+-- CODELAB 04: Abstractions 
 --
 -- Have you noticed that we keep using the same pattern?  If the list is
 -- empty we return a specific value.  If it is not, we call a function to
