@@ -68,8 +68,8 @@ services:
     #<<: [ *docker-cli-mode ]
     command: make -C 05_maybe
 
-  06_rps:
-    <<: [ *generic-haskell-runtime ]
+  #06_rps:
+  #  <<: [ *generic-haskell-runtime ]
     # You can run in CLI mode with "docker-compose run 06_rps". Un-comment the following line and comment the "command" instruction below
     #<<: [ *docker-cli-mode ]
-    command: make -C 06_rps
+  #  command: make -C 06_rps
