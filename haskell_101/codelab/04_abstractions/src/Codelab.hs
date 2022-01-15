@@ -43,8 +43,21 @@ import Prelude hiding (map, filter, foldr, foldl)
 
 -- You probably remember this one?  Nothing extraordinary here.
 map :: (a -> b) -> [a] -> [b]
-map _ []     = codelab
-map f (a:as) = codelab
+-- Transforming the empty list in empty list returns the empty list
+map _ []     = []
+-- Applying a function to a non-empty list 
+-- F is a transformational function that takes an A, transforming into B
+-- If we apply f on an A element, we don't do anything in place, we have
+-- to create a new list. The way to create a new list is to use the ":"
+-- operator, which appends values at the beginning of lists: "f a :"
+-- Now we use the same transformation funcion on the tail: f a : map as
+-- As "f a :" is of higher priority, the function will be executed first,
+-- as function application binds first. That is:
+-- f a is the result of that operation, appened to the new list of map
+-- on the tail of the list (which recursively will execute the same).
+map f (a:as) = f a : map f as
+
+-- USING FOLDR, TODO: map f l foldr (\a z -> f a : z) [] l
 
 -- Same thing here for filter, except that we use it to introduce a new
 -- syntax: those | are called "guards". They let you specify different
