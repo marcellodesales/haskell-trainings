@@ -83,17 +83,30 @@ filter f (x:xs)
   | f x       = x : filter f xs
   | otherwise = filter f xs
 
--- foldl
+-- foldl: fold from left
 -- foldl (-) 0 [1,2,3,4]   ==   (((0 - 1) - 2) - 3) - 4   ==   -10
+-- That is, pass the acumulator to the function, and the result of it,
+-- is applied to the rest of the list. 
+-- (0 - 1), (-1 - 2), (-3 - 3), (-6 - 4) = -10 
 foldl :: (a -> x -> a) -> a -> [x] -> a
-foldl _ a []     = codelab
-foldl f a (x:xs) = codelab
+-- When re reach the end of the list, we just return th eacumulator,
+-- which is the first element of the reasoning list above
+foldl _ a []     = a
+-- We need to start with f a x, as it will always be called. However, we need to use it
+-- as the new accumulator for the next element of the list: foldl f (f a x) xs
+foldl f a (x:xs) = foldl f (f a x) xs
+-- Using the concept of ``, which transforms the function in infix notaiton
+--foldl f a (x:xs) = foldl f (a `f` x) xs
+-- We can't remove the parenthesis with $ 
 
--- foldr
+-- foldr: fold from right
 -- foldr (-) 0 [1,2,3,4]   ==   1 - (2 - (3 - (4 - 0)))   ==    -2
+-- In this case, the accumulator proces the  last element 
 foldr :: (x -> a -> a) -> a -> [x] -> a
-foldr _ a []     = codelab
-foldr f a (x:xs) = codelab
+foldr _ a []     = a
+-- Now for this, we can use $ to remove the following
+--foldr f a (x:xs) = f x (fold f a xs)
+foldr f a (x:xs) = f x $ foldr f a xs
 
 -- #####################################################################
 -- BONUS STAGE!
