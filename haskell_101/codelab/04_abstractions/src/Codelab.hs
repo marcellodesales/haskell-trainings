@@ -64,17 +64,24 @@ map f (a:as) = f a : map f as
 -- implementations of your function depending on some Boolean
 -- value. "otherwise" is not a keyword but simply a constant whose value is
 -- True! Try to evaluate "otherwise" in GHCI.
+-- Prelude> otherwise
+-- True
 --
 -- Simple example of guard usage:
 --   abs :: Int -> Int
 --   abs x
 --     | x < 0     = -x
+
+-- Presentation explation: https://youtu.be/cTN1Qar4HSw?t=5892
 --     | otherwise =  x
 filter :: (a -> Bool) -> [a] -> [a]
-filter _ [] = codelab
+filter _ [] = []
 filter f (x:xs)
-  | codelab   = codelab
-  | otherwise = codelab
+-- when the predicate is evaluated to true, then we apend x to the filtered list, concatenated
+-- First, it evaluates the values of x, which uses a new list to return
+-- If the predicate is False, it will apply the list f to the tail of xs
+  | f x       = x : filter f xs
+  | otherwise = filter f xs
 
 -- foldl
 -- foldl (-) 0 [1,2,3,4]   ==   (((0 - 1) - 2) - 3) - 4   ==   -10
