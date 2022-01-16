@@ -67,25 +67,51 @@ tail (_: t) = t
 length :: [a] -> Int
 length    []  = 0
 length (_: t) = 1 + length t
+-- instructor's notes
+-- length list = 1 + length (tail list)
 
 -- "and" returns True if all the boolean values in the list are True.
 -- What do you think it returns for an empty list?
 and :: [Bool] -> Bool
+-- Reason first for the pattern : https://youtu.be/cTN1Qar4HSw?t=5381
 and    []      = True
 and (h:t)      = h && and t
+
+-- Using the reduce foldl: fun on list l, = foldl operator && reduced accumulator and list
+-- In a single line, we can write everything: https://youtu.be/cTN1Qar4HSw?t=6211
+andF :: [Bool] -> Bool
+andF l = foldl (&&) True l
+
+-- Preesentation version: https://youtu.be/cTN1Qar4HSw?t=5409
+-- and    []      = True
+-- and (False:_)  = False
+-- and (True:bs)  = and bs -- Here, everything is only true if that happens
 
 -- "or" returns True if at least one value in the list is True.
 -- What do you think it returns for an empty list?
 or :: [Bool] -> Bool
+-- Reason first for the pattern : https://youtu.be/cTN1Qar4HSw?t=5381
 or []         = False
 or (h:t)      = h || or t
 
+-- or    []      = True
+-- or (False:_)  = False
+-- or (True:bs)  = and bs -- Here, everything is only true if that happens
+
+-- Using foldl, we can do as follows: https://youtu.be/cTN1Qar4HSw?t=6552
+orF     :: [Bool] -> Bool
+orF list = foldl (||) False list
+
+-- Explanation: https://youtu.be/cTN1Qar4HSw?t=5478
 -- "(++)" is the concatenation operator.  To concatenate two linked lists
 -- you have to chain the second one at the end of the first one.
 (++) :: [a] -> [a] -> [a]
 
 -- To implement this it is still confusing to use the elements of lists 
--- The difference between the [] anbd : are very subtle
+-- The difference between the [] anbd : are very subtle: 
+-- Operator : adds elements to the beginning of the list instead of the end of it
+-- 30 : [40, 50] = [30, 40, 50]
+-- 2 possible cases: L1 is empty or not
 [] ++ list2   = list2
 -- If one of the lists is not empty, then we take the head and the tail the concat
 (h1:t1) ++ l2 = h1 : t1 ++ l2
