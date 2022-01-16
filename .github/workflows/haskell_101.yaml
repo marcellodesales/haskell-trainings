@@ -1,0 +1,258 @@
+# https://www.freecodecamp.org/news/a-lightweight-tool-agnostic-ci-cd-flow-with-github-actions/
+name: main
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - feature/**
+      - bugfix/**
+      - hotfix/**
+    paths-ignore:
+      - '**/README.md' # https://stackoverflow.com/questions/62968897/is-it-possible-to-not-run-github-action-for-readme-updates/62972393#62972393
+
+#  pull_request:
+#    branches: [ master, develop, feature/**, bugfix/** ]
+
+# https://docs.github.com/en/actions/learn-github-actions/environment-variables
+env:
+  DOCKER_CONTEXT_PATH: "haskell_101/codelab"
+  IMAGE_NAME_SUFFIX: haskell_101
+
+  LOCAL_IMAGE_BIN_NAME: training-docker-image
+  LOCAL_IMAGE_BIN_PATH: ./dist
+
+# https://faun.pub/building-a-ci-cd-pipeline-with-github-actions-and-docker-part-1-a9d8709c31fb
+jobs:
+
+  setup:
+    name: Resolve variables and values
+    runs-on: ubuntu-latest
+    container:
+      image: docker/compose:1.29.2
+
+    # https://github.community/t/sharing-a-variable-between-jobs/16967/14
+    outputs:
+      defaultDockerImageRepo: ${{steps.set-base-values.outputs.defaultDockerImageRepo}}
+      defaultDockerImageVersion: ${{steps.set-base-values.outputs.defaultDockerImageVersion}}
+      defaultDockerImageBranchTag: ${{steps.set-base-values.outputs.defaultDockerImageBranchTag}}
+      defaultDockerImageBranchShaTag: ${{steps.set-base-values.outputs.defaultDockerImageBranchShaTag}}
+      dockerContextPath: ${{steps.set-base-values.outputs.dockerContextPath}}
+
+    steps:
+      - name: Set default envs from the env above
+        run: |
+           echo "IMAGE_NAME_SUFFIX=${{env.IMAGE_NAME_SUFFIX}}" >> $GITHUB_ENV
+           echo "DOCKER_CONTEXT_PATH=${{env.DOCKER_CONTEXT_PATH}}" >> $GITHUB_ENV
+           # registry has renamed: https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-docker-registry
+           echo "DEFAULT_DOCKER_IMAGE_REPO=ghcr.io/${GITHUB_REPOSITORY}/${IMAGE_NAME_SUFFIX}" >> $GITHUB_ENV
+           echo "DEFAULT_DOCKER_IMAGE_VERSION=${GITHUB_SHA}" >> $GITHUB_ENV
+
+      - id: set-base-values
+        # The below outputs a JSON array of check tasks for each subproject
+        #  and uses GitHub Actions magic (::set-output) to set an output
+        #  variable https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
+        # https://github.community/t/sharing-a-variable-between-jobs/16967/14
+        run: |
+          # The repo name only without refs
+          BRANCH_TAG=${GITHUB_REF##*/}
+
+          # The branch and sha together makes it easier to find
+          BRANCH_SHA_TAG=${BRANCH_TAG}-$(echo ${GITHUB_SHA} | cut -c1-7)
+          echo "Branch tag to use: ${BRANCH_TAG} and ${BRANCH_SHA_TAG}"
+
+          echo "::set-output name=dockerContextPath::$DOCKER_CONTEXT_PATH"
+          echo "::set-output name=defaultDockerImageRepo::$DEFAULT_DOCKER_IMAGE_REPO"
+          echo "::set-output name=defaultDockerImageVersion::$DEFAULT_DOCKER_IMAGE_VERSION"
+          echo "::set-output name=defaultDockerImageBranchTag::$BRANCH_TAG"
+          echo "::set-output name=defaultDockerImageBranchShaTag::$BRANCH_SHA_TAG"
+
+  build:
+    name: Build Docker Image with Haskell Training-101
+    needs: setup
+    runs-on: ubuntu-latest
+    container:
+      image: docker/compose:1.29.2
+
+    # Declare our output variable https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      image_name: ${{ steps.set-compose_image_name.outputs.image_name }}
+
+    steps:
+      - name: Fetch only the top commit
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      #### THIS IS ONLY USED FOR PERSONAL REASONS: gitlab supercash's haskell
+      # Used during pull of Dockerfile
+      - name: Login to Gitlab Container Registry to pull Haskell image
+        uses: docker/login-action@v1
+        with:
+          registry: registry.gitlab.com
+          # Resolves to this current user
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_GITLAB_TOKEN }}
+
+      # This is for pushing the built image
+      # https://github.com/marcellodesales/cloner/packages?package_type=Docker
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_GITHUB_TOKEN }}
+
+      - id: set-matrix
+        # The below outputs a JSON array of check tasks for each subproject
+        #  and uses GitHub Actions magic (::set-output) to set an output
+        #  variable https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
+        run: |
+          #ls -lar
+          # https://stackoverflow.com/questions/22434290/jq-bash-make-json-array-from-variable/54576004#54576004
+          cd ${{env.DOCKER_CONTEXT_PATH}}
+
+          # Get the keys in docker-compose https://stackoverflow.com/questions/23118341/how-to-get-key-names-from-json-using-jq/23118607#23118607
+          EXERCISES=$(docker-compose config | docker run --rm -i mikefarah/yq e . - -o json | docker run --rm -i imega/jq -r -c '.services | keys')
+
+          # Convert them into the matrix object
+          GITHUB_MATRIX_PACKAGES=$(echo $EXERCISES | docker run --rm -i imega/jq '. | sort' | docker run --rm -i imega/jq -c '{"package": .}')
+          echo "Dynamic github matrix packages: ${GITHUB_MATRIX_PACKAGES}"
+
+          # Build a matrix of values to generate parallel stages, one for each exercise
+          # https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
+          # https://rnorth.org/faster-parallel-github-builds/
+          # https://www.cynkra.com/blog/2020-12-23-dynamic-gha/
+          # https://github.com/r-dbi/DBItest/blob/main/.github/workflows/backends.yaml
+          echo "Setting the value as the matrix..."
+          echo "::set-output name=matrix::$GITHUB_MATRIX_PACKAGES"
+
+      # https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package
+      # https://github.community/t/github-container-registry-ghcr-io-packages-not-appearing-in-webinterface/130077
+      # Manually make the image public by going to the module's settings, Danger Zone
+      - name: Associate Dockerfile to the repo
+        run: |
+          env
+          echo "In order to associate the docker image to the repo, we need to associate the Dockerfile to the repo"
+          export LABEL_VALUE=https://github.com/${GITHUB_REPOSITORY}
+          echo "Adding 'LABEL org.opencontainers.image.source ${LABEL_VALUE}' to Dockerfile"
+          
+          # Switch to the context dir and update all dockerfiles that will be used
+          cd ${{env.DOCKER_CONTEXT_PATH}}
+          # https://stackoverflow.com/questions/845863/how-to-use-in-an-xargs-command/70230514#70230514
+          find . -name 'Dockerfile' -print0 | xargs -0 grep -iL "org.opencontainers.image.source" | xargs -0 -I{} sh -c 'echo "LABEL org.opencontainers.image.source ${LABEL_VALUE}" >> {}' -- {}
+
+      # https://github.community/t/use-docker-layer-caching-with-docker-compose-build-not-just-docker/156049/3
+      # https://github.com/docker/build-push-action/blob/master/docs/advanced/export-docker.md
+      # https://mmeendez8.github.io/2021/07/19/new-docker-cache-is-out.html 
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
+        # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
+      - name: Build Docker Image with Cache
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          # https://github.community/t/use-docker-layer-caching-with-docker-compose-build-not-just-docker/156049/3
+          #load: true Error: buildx failed with: error: push and load may not be set together at the moment
+          tags: ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}}
+          builder: ${{ steps.buildx.outputs.name }}
+          file: ${{needs.setup.outputs.dockerContextPath}}/Dockerfile
+          context: ${{needs.setup.outputs.dockerContextPath}}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          #cache-from: type=local,src=/tmp/.buildx-cache
+          #cache-to: type=local,dest=/tmp/.buildx-cache
+
+      # Just show the metadata built in case one needs to review/reuse the data
+      - name: Docker Image digest outputs
+        run: echo ${{ steps.docker_build.outputs.digest }}
+
+  # Executes each exercise in parallel in isolated docker containers using Github's Build Matrix
+  verify:
+    needs: [setup, build]
+    name: Verify
+    runs-on: ubuntu-latest
+
+    # TODO: Composite github : https://stackoverflow.com/questions/65242830/in-a-github-actions-workflow-is-there-a-way-to-have-multiple-jobs-reuse-the-sam/65243912#65243912
+    # Just use a matrix to run the tests for each individual exercise
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.build.outputs.matrix)}}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # https://github.com/marcellodesales/cloner/packages?package_type=Docker
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_GITHUB_TOKEN }}
+
+      - name: Run ${{matrix.package}} tests
+        # https://stackoverflow.com/questions/55756372/when-using-buildkit-with-docker-how-do-i-see-the-output-of-run-commands/55759337#55759337
+        run: |
+          # Since docker-compose uses the image defined with a different name, let's just tag the CICD image loaded before
+          echo "Building the context dir ${{env.DOCKER_CONTEXT_PATH}}"
+          cd ${{env.DOCKER_CONTEXT_PATH}}
+
+          COMPOSE_IMAGE=$(docker-compose config | grep image: | awk '{ print $2 }' | tail -1)
+          echo "Will tag docker-compose image '${COMPOSE_IMAGE}' as the CICD image '${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}}'"
+          docker pull ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}}
+          docker tag ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}} ${COMPOSE_IMAGE}
+
+          echo "Since the image is already built and loaded: docker-compose: ${COMPOSE_IMAGE_NAME} ${{matrix.package}}"
+          docker-compose run ${{matrix.package}}
+
+  deploy:
+    name: Tag and Push the docker images
+    # https://stackoverflow.com/questions/63148639/create-dependencies-between-jobs-in-github-actions/63148947#63148947
+    # https://github.community/t/sharing-a-variable-between-jobs/16967/14
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    container:
+      image: docker/compose:1.29.2
+
+    steps:
+      # https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+      - name: Show all outputs
+        run: |
+          echo "Output key: needs.setup.outputs.defaultDockerImageRepo=${{needs.setup.outputs.defaultDockerImageRepo}}"
+          echo "Output key: needs.setup.outputs.defaultDockerImageVersion=${{needs.setup.outputs.defaultDockerImageVersion}}"
+          echo "Output key: needs.setup.outputs.defaultDockerImageBranchTag=${{needs.setup.outputs.defaultDockerImageBranchTag}}"
+
+      # https://github.com/marcellodesales/cloner/packages?package_type=Docker
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_GITHUB_TOKEN }}
+
+      - name: Pull the built docker images locally
+        run: |
+          docker pull ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}}
+          docker images
+
+      - name: Push BRANCH docker-compose image '${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}}' as '${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchTag}}'
+        run: |
+          docker tag ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}} ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchTag}}
+          docker push ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchTag}}
+
+      - name: Push BRANCH-SHA docker-compose image '${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}}' as '${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchShaTag}}'
+        run: |
+          docker tag ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}} ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchShaTag}}
+          docker push ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageBranchShaTag}} 
+
+      - if: endsWith(github.ref, '/main') || endsWith(github.ref, '/master')
+        name: Push LATEST docker-compose image '${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}}' as '${{needs.setup.outputs.defaultDockerImageRepo}}:latest'
+        run: |
+          docker tag ${{needs.setup.outputs.defaultDockerImageRepo}}:${{needs.setup.outputs.defaultDockerImageVersion}} ${{needs.setup.outputs.defaultDockerImageRepo}}:latest
+          docker push ${{needs.setup.outputs.defaultDockerImageRepo}}:latest

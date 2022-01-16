@@ -22,6 +22,14 @@ module Codelab where
 import Internal (codelab)
 import Prelude hiding (null, head, tail, length, and, or, (++))
 
+----
+---- TUTORIAL ON LISTS and PATTERN MATCHING
+---- https://www.haskelltutorials.com/guides/haskell-lists-ultimate-guide.html
+--- Subtle difference between : and [] when pattern-matching
+--- With : you can pattern-match a list with any number of elements. This is \
+--- because the last : matches the remainder of the list. Whereas, with [], 
+--- you can only pattern match a list with an exact number of elements.
+
 -- CODELAB 03: Lists and recursion
 --
 -- The default list is ubiquitous in the Prelude; the default String type
@@ -37,35 +45,73 @@ import Prelude hiding (null, head, tail, length, and, or, (++))
 
 -- null tells you whether a list is empty or not
 null :: [a] -> Bool
-null fixme = codelab
+-- I couldn't do this by myself... the pattern is there, but it's not so clear initially about the syntax
+null [] = True
+-- I had to look for the underline patter again, which takes "anything else" on the pattern matching
+null  _ = False
 
 -- head returns the first element of the list.
 --
 -- On an empty list, head panics: functions that can panic are "partial"
 head :: [a] -> a
-head []    = error "head: empty list"
-head fixme = codelab
+head []      = error "head: empty list"
+head (h: _)  = h
 
 -- tail returns everything but the first element.
 -- If the list is empty it panics
 tail :: [a] -> [a]
-tail = codelab
+tail     [] = error "tail: empty list"
+tail (_: t) = t
 
 -- Do you remember it from the slides?
 length :: [a] -> Int
-length l = codelab
+length    []  = 0
+length (_: t) = 1 + length t
+-- instructor's notes
+-- length list = 1 + length (tail list)
 
 -- "and" returns True if all the boolean values in the list are True.
 -- What do you think it returns for an empty list?
 and :: [Bool] -> Bool
-and l = codelab
+-- Reason first for the pattern : https://youtu.be/cTN1Qar4HSw?t=5381
+and    []      = True
+and (h:t)      = h && and t
+
+-- Using the reduce foldl: fun on list l, = foldl operator && reduced accumulator and list
+-- In a single line, we can write everything: https://youtu.be/cTN1Qar4HSw?t=6211
+andF :: [Bool] -> Bool
+andF l = foldl (&&) True l
+
+-- Preesentation version: https://youtu.be/cTN1Qar4HSw?t=5409
+-- and    []      = True
+-- and (False:_)  = False
+-- and (True:bs)  = and bs -- Here, everything is only true if that happens
 
 -- "or" returns True if at least one value in the list is True.
 -- What do you think it returns for an empty list?
 or :: [Bool] -> Bool
-or l = codelab
+-- Reason first for the pattern : https://youtu.be/cTN1Qar4HSw?t=5381
+or []         = False
+or (h:t)      = h || or t
 
+-- or    []      = True
+-- or (False:_)  = False
+-- or (True:bs)  = and bs -- Here, everything is only true if that happens
+
+-- Using foldl, we can do as follows: https://youtu.be/cTN1Qar4HSw?t=6552
+orF     :: [Bool] -> Bool
+orF list = foldl (||) False list
+
+-- Explanation: https://youtu.be/cTN1Qar4HSw?t=5478
 -- "(++)" is the concatenation operator.  To concatenate two linked lists
 -- you have to chain the second one at the end of the first one.
 (++) :: [a] -> [a] -> [a]
-l1 ++ l2 = codelab
+
+-- To implement this it is still confusing to use the elements of lists 
+-- The difference between the [] anbd : are very subtle: 
+-- Operator : adds elements to the beginning of the list instead of the end of it
+-- 30 : [40, 50] = [30, 40, 50]
+-- 2 possible cases: L1 is empty or not
+[] ++ list2   = list2
+-- If one of the lists is not empty, then we take the head and the tail the concat
+(h1:t1) ++ l2 = h1 : t1 ++ l2

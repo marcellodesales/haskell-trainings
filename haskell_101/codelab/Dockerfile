@@ -19,7 +19,9 @@ FROM registry.gitlab.com/supercash/core/haskell-stack-base:stack-2.7.3_haskell-8
 RUN apk update && \
     apk add vim
 
-WORKDIR /google/trainings/haskell-101
+# Define the working dir as env var so we can use in CICD
+ENV HASKELL_TRAINING_WORKDIR /google/trainings/haskell-101
+WORKDIR ${HASKELL_TRAINING_WORKDIR}
 
 # Copy all cabal dependencies files only, fetched from docker-context
 COPY --from=dependencies /google/trainings/haskell/cabal .
