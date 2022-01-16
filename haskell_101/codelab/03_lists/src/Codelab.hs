@@ -77,6 +77,11 @@ and :: [Bool] -> Bool
 and    []      = True
 and (h:t)      = h && and t
 
+-- Using the reduce foldl: fun on list l, = foldl operator && reduced accumulator and list
+-- In a single line, we can write everything: https://youtu.be/cTN1Qar4HSw?t=6211
+andF :: [Bool] -> Bool
+andF l = foldl (&&) True l
+
 -- Preesentation version: https://youtu.be/cTN1Qar4HSw?t=5409
 -- and    []      = True
 -- and (False:_)  = False
@@ -92,6 +97,10 @@ or (h:t)      = h || or t
 -- or    []      = True
 -- or (False:_)  = False
 -- or (True:bs)  = and bs -- Here, everything is only true if that happens
+
+-- Using foldl, we can do as follows: https://youtu.be/cTN1Qar4HSw?t=6552
+orF     :: [Bool] -> Bool
+orF list = foldl (||) False list
 
 -- Explanation: https://youtu.be/cTN1Qar4HSw?t=5478
 -- "(++)" is the concatenation operator.  To concatenate two linked lists
